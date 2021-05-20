@@ -10,7 +10,7 @@ import (
 	"math"
 	"net/http"
 
-	"github.com/h2non/bimg"
+	"github.com/wuzhihui1123/bimg"
 )
 
 // OperationsMap defines the allowed image transformation operations listed by name.

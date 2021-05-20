@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/h2non/bimg"
+	"github.com/wuzhihui1123/bimg"
 )
 
 var (
