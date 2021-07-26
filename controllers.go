@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/wuzhihui1123/bimg"
 	"github.com/h2non/filetype"
+	"github.com/wuzhihui1123/bimg"
 )
 
 func indexController(w http.ResponseWriter, r *http.Request) {
@@ -87,6 +87,11 @@ func imageHandler(w http.ResponseWriter, r *http.Request, buf []byte, operation 
 		if err == nil && kind.MIME.Value != "" {
 			mimeType = kind.MIME.Value
 		}
+	}
+
+	//Use magick to process bmp image
+	if mimeType == "image/bmp" {
+		mimeType = "image/magick"
 	}
 
 	// Infer text/plain responses as potential SVG image
