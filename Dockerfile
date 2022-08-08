@@ -1,8 +1,8 @@
-ARG GOLANG_VERSION=1.14
-FROM golang:${GOLANG_VERSION} as builder
+ARG GOLANG_VERSION=1.17
+FROM golang:${GOLANG_VERSION}-bullseye as builder
 
 ARG IMAGINARY_VERSION=dev
-ARG LIBVIPS_VERSION=8.10.0
+ARG LIBVIPS_VERSION=8.12.2
 ARG GOLANGCILINT_VERSION=1.29.0
 
 # Installs libvips + required libraries
@@ -50,7 +50,7 @@ RUN go mod download
 COPY . .
 
 # Run quality control
-RUN go test -test.v -test.race -test.covermode=atomic .
+RUN go test ./... -test.v -race -test.coverprofile=atomic .
 RUN golangci-lint run .
 
 # Compile imaginary
@@ -59,7 +59,7 @@ RUN go build -a \
     -ldflags="-s -w -h -X main.Version=${IMAGINARY_VERSION}" \
     github.com/h2non/imaginary
 
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 
 ARG IMAGINARY_VERSION
 
@@ -78,14 +78,16 @@ COPY --from=builder /etc/ssl/certs /etc/ssl/certs
 RUN DEBIAN_FRONTEND=noninteractive \
   apt-get update && \
   apt-get install --no-install-recommends -y \
-  procps libglib2.0-0 libjpeg62-turbo libpng16-16 libopenexr23 \
+  procps libglib2.0-0 libjpeg62-turbo libpng16-16 libopenexr25 \
   libwebp6 libwebpmux3 libwebpdemux2 libtiff5 libgif7 libexif12 libxml2 libpoppler-glib8 \
-  libmagickwand-6.q16-6 libpango1.0-0 libmatio4 libopenslide0 \
-  libgsf-1-114 fftw3 liborc-0.4-0 librsvg2-2 libcfitsio7 libimagequant0 libheif1 && \
+  libmagickwand-6.q16-6 libpango1.0-0 libmatio11 libopenslide0 libjemalloc2 \
+  libgsf-1-114 fftw3 liborc-0.4-0 librsvg2-2 libcfitsio9 libimagequant0 libheif1 && \
+  ln -s /usr/lib/$(uname -m)-linux-gnu/libjemalloc.so.2 /usr/local/lib/libjemalloc.so && \
   apt-get autoremove -y && \
   apt-get autoclean && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+ENV LD_PRELOAD=/usr/local/lib/libjemalloc.so
 
 # Server port to listen
 ENV PORT 9000

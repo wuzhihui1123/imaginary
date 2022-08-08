@@ -55,6 +55,8 @@ var paramTypeCoercions = map[string]Coercion{
 	"operations":  coerceOperations,
 	"interlace":   coerceInterlace,
 	"aspectratio": coerceAspectRatio,
+	"palette":     coercePalette,
+	"speed":       coerceSpeed,
 }
 
 func coerceTypeInt(param interface{}) (int, error) {
@@ -340,6 +342,17 @@ func coerceOperations(io *ImageOptions, param interface{}) (err error) {
 func coerceInterlace(io *ImageOptions, param interface{}) (err error) {
 	io.Interlace, err = coerceTypeBool(param)
 	io.IsDefinedField.Interlace = true
+	return err
+}
+
+func coercePalette(io *ImageOptions, param interface{}) (err error) {
+	io.Palette, err = coerceTypeBool(param)
+	io.IsDefinedField.Palette = true
+	return err
+}
+
+func coerceSpeed(io *ImageOptions, param interface{}) (err error) {
+	io.Speed, err = coerceTypeInt(param)
 	return err
 }
 

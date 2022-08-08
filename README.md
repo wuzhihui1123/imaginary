@@ -1,4 +1,4 @@
-# imaginary [![Build Status](https://travis-ci.org/h2non/imaginary.svg)](https://travis-ci.org/h2non/imaginary) [![Docker](https://img.shields.io/badge/docker-h2non/imaginary-blue.svg)](https://hub.docker.com/r/h2non/imaginary/) [![Docker Registry](https://img.shields.io/docker/pulls/h2non/imaginary.svg)](https://hub.docker.com/r/h2non/imaginary/) [![Go Report Card](http://goreportcard.com/badge/h2non/imaginary)](https://goreportcard.com/report/h2non/imaginary) [![Fly.io](https://img.shields.io/badge/deploy-fly.io-blue.svg)](https://fly.io/launch/github/h2non/imaginary)
+# imaginary [![Build Status](https://travis-ci.org/h2non/imaginary.svg)](https://travis-ci.org/h2non/imaginary) [![Docker](https://img.shields.io/badge/docker-h2non/imaginary-blue.svg)](https://hub.docker.com/r/h2non/imaginary/) [![Docker Registry](https://img.shields.io/docker/pulls/h2non/imaginary.svg)](https://hub.docker.com/r/h2non/imaginary/) [![Fly.io](https://img.shields.io/badge/deploy-fly.io-blue.svg)](https://fly.io/launch/github/h2non/imaginary)
 
 **[Fast](#benchmarks) HTTP [microservice](http://microservices.io/patterns/microservices.html)** written in Go **for high-level image processing** backed by [bimg](https://github.com/h2non/bimg) and [libvips](https://github.com/jcupitt/libvips). `imaginary` can be used as private or public HTTP service for massive image processing with first-class support for [Docker](#docker) & [Fly.io](#flyio).
 It's almost dependency-free and only uses [`net/http`](http://golang.org/pkg/net/http/) native package without additional abstractions for better [performance](#performance).
@@ -10,7 +10,7 @@ with additional optional features such as **API token authorization**, **URL sig
 
 `imaginary` is able to output images as JPEG, PNG and WEBP formats, including transparent conversion across them.
 
-`imaginary` also optionally **supports image placeholder fallback mechanism** in case of image processing error or server error of any nature, therefore an image will be always returned by the server in terms of HTTP response body and content MIME type, even in case of error, matching the expected image size and format transparently.
+`imaginary` optionally **supports image placeholder fallback mechanism** in case of image processing error or server error of any nature, hence an image will be always returned by imaginary even in case of error, trying to match the requested image size and format type transparently. The error details will be provided in the response HTTP header `Error` field serialized as JSON.
 
 `imaginary` uses internally `libvips`, a powerful and efficient library written in C for fast image processing
 which requires a [low memory footprint](https://github.com/libvips/libvips/wiki/Benchmarks)
@@ -27,6 +27,7 @@ To get started, take a look the [installation](#installation) steps, [usage](#co
   - [Docker](#docker)
   - [Fly.io](#flyio)
   - [Cloud Foundry](#cloudfoundry)
+  - [Google Cloud Run](#google-cloud-run)
 - [Recommended resources](#recommended-resources)
 - [Production notes](#production-notes)
 - [Scalability](#scalability)
@@ -112,12 +113,12 @@ docker run -p 9000:9000 h2non/imaginary -cors -gzip
 
 Start the container enabling remote URL source image processing via GET requests and `url` query param.
 ```
-docker run -p 9000:9000 h2non/imaginary imaginary -p 9000 -enable-url-source
+docker run -p 9000:9000 h2non/imaginary -p 9000 -enable-url-source
 ```
 
 Start the container enabling local directory image process via GET requests and `file` query param.
 ```
-docker run -p 9000:9000 h2non/imaginary imaginary -p 900 -mount /volume/images
+docker run -p 9000:9000 h2non/imaginary -p 900 -mount /volume/images
 ```
 
 Start the container in debug mode:
@@ -162,7 +163,7 @@ services:
 
 Deploy imaginary in seconds close to your users in [Fly.io](https://fly.io) cloud by clicking on the button below:
 
-<a href="https://fly.io/launch/github/h2non/imaginary">
+<a href="https://fly.io/docs/app-guides/run-a-global-image-service/">
   <img src="testdata/flyio-button.svg?raw=true" width="200">
 </a>
 
@@ -200,6 +201,12 @@ Start the application
 cf start imaginary-inst01
 ```
 
+### Google Cloud Run
+
+Click to deploy on Google Cloud Run:
+
+[![Run on Google Cloud](https://deploy.cloud.run/button.svg)](https://deploy.cloud.run)
+
 ### Recommended resources
 
 Given the multithreaded native nature of Go, in terms of CPUs, most cores means more concurrency and therefore, a better performance can be achieved.
@@ -218,6 +225,14 @@ The recommended concurrency limit per server to guarantee a good performance is 
 You can enable it simply passing a flag to the binary:
 ```
 $ imaginary -concurrency 20
+```
+
+### Memory issues
+
+In case you are experiencing any persistent unreleased memory issues in your deployment, you can try passing this environment variables to `imaginary`:
+
+```
+MALLOC_ARENA_MAX=2 imaginary -p 9000 -enable-url-source
 ```
 
 ### Graceful shutdown
@@ -255,7 +270,7 @@ Assuming that you want to provide a high availability to deal efficiently with, 
 
 ## Clients
 
-- [node.js/io.js](https://github.com/h2non/node-imaginary)
+- [node.js](https://github.com/h2non/node-imaginary)
 
 Feel free to send a PR if you created a client for other language.
 
@@ -322,8 +337,8 @@ Options:
   -key <key>                Define API key for authorization
   -mount <path>             Mount server local directory
   -http-cache-ttl <num>     The TTL in seconds. Adds caching headers to locally served files.
-  -http-read-timeout <num>  HTTP read timeout in seconds [default: 30]
-  -http-write-timeout <num> HTTP write timeout in seconds [default: 30]
+  -http-read-timeout <num>  HTTP read timeout in seconds [default: 60]
+  -http-write-timeout <num> HTTP write timeout in seconds [default: 60]
   -enable-url-source        Enable remote HTTP URL image source processing (?url=http://..)
   -enable-placeholder       Enable image response placeholder to be used in case of error [default: false]
   -enable-auth-forwarding   Forwards X-Forward-Authorization or Authorization header to the image source server. -enable-url-source flag must be defined. Tip: secure your server from public access to prevent attack vectors
@@ -411,7 +426,7 @@ This feature is particularly useful to protect against multiple image operations
 imaginary -p 8080 -enable-url-signature -url-signature-key 4f46feebafc4b5e988f131c4ff8b5997
 ```
 
-It is recommanded to pass key as environment variables:
+It is recommended to pass key as environment variables:
 ```
 URL_SIGNATURE_KEY=4f46feebafc4b5e988f131c4ff8b5997 imaginary -p 8080 -enable-url-signature
 ```
@@ -466,13 +481,13 @@ imaginary can be configured to block all requests for images with a src URL this
 
 | `allowed-origins` setting | image url | is valid |
 | ------------------------- | --------- | -------- |
-| `--allowed-origins s3.amazonaws.com/some-bucket/` | `s3.amazonaws.com/some-bucket/images/image.png` | VALID |
-| `--allowed-origins s3.amazonaws.com/some-bucket/` | `s3.amazonaws.com/images/image.png` | NOT VALID (no matching basepath) |
-| `--allowed-origins s3.amazonaws.com/some-*` | `s3.amazonaws.com/some-bucket/images/image.png` | VALID |
-| `--allowed-origins *.amazonaws.com/some-bucket/` | `anysubdomain.amazonaws.com/some-bucket/images/image.png` | VALID |
-| `--allowed-origins *.amazonaws.com` | `anysubdomain.amazonaws.comimages/image.png` | VALID |
-| `--allowed-origins *.amazonaws.com` | `www.notaws.comimages/image.png` | NOT VALID (no matching host) |
-| `--allowed-origins *.amazonaws.com, foo.amazonaws.com/some-bucket/` | `bar.amazonaws.com/some-other-bucket/image.png` | VALID (matches first condition but not second) |
+| `-allowed-origins https://s3.amazonaws.com/some-bucket/` | `s3.amazonaws.com/some-bucket/images/image.png` | VALID |
+| `-allowed-origins https://s3.amazonaws.com/some-bucket/` | `s3.amazonaws.com/images/image.png` | NOT VALID (no matching basepath) |
+| `-allowed-origins https://s3.amazonaws.com/some-*` | `s3.amazonaws.com/some-bucket/images/image.png` | VALID |
+| `-allowed-origins https://*.amazonaws.com/some-bucket/` | `anysubdomain.amazonaws.com/some-bucket/images/image.png` | VALID |
+| `-allowed-origins https://*.amazonaws.com` | `anysubdomain.amazonaws.comimages/image.png` | VALID |
+| `-allowed-origins https://*.amazonaws.com` | `www.notaws.comimages/image.png` | NOT VALID (no matching host) |
+| `-allowed-origins https://*.amazonaws.com, foo.amazonaws.com/some-bucket/` | `bar.amazonaws.com/some-other-bucket/image.png` | VALID (matches first condition but not second) |
 
 ### Authorization
 
@@ -554,6 +569,7 @@ Image measures are always in pixels, unless otherwise indicated.
 - **areaheight**  `int`   - Width area to extract. Example: `300`
 - **quality**     `int`   - JPEG image quality between 1-100. Defaults to `80`
 - **compression** `int`   - PNG compression level. Default: `6`
+- **palette**     `bool`  - Enable 8-bit quantisation. Works with only PNG images. Default: `false`
 - **rotate**      `int`   - Image rotation angle. Must be multiple of `90`. Example: `180`
 - **factor**      `int`   - Zoom factor level. Example: `2`
 - **margin**      `int`   - Text area margin for watermark. Example: `50`
@@ -740,6 +756,7 @@ Resize an image by width or height. Image aspect ratio is maintained
 - field `string` - Only POST and `multipart/form` payloads
 - interlace `bool`
 - aspectratio `string`
+- palette `bool`
 
 #### GET | POST /enlarge
 Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
@@ -769,6 +786,7 @@ Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
 - minampl `float`
 - field `string` - Only POST and `multipart/form` payloads
 - interlace `bool`
+- palette `bool`
 
 #### GET | POST /extract
 Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
@@ -802,6 +820,7 @@ Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
 - field `string` - Only POST and `multipart/form` payloads
 - interlace `bool`
 - aspectratio `string`
+- palette `bool`
 
 #### GET | POST /zoom
 Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
@@ -833,6 +852,7 @@ Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
 - field `string` - Only POST and `multipart/form` payloads
 - interlace `bool`
 - aspectratio `string`
+- palette `bool`
 
 #### GET | POST /thumbnail
 Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
@@ -862,6 +882,7 @@ Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
 - field `string` - Only POST and `multipart/form` payloads
 - interlace `bool`
 - aspectratio `string`
+- palette `bool`
 
 #### GET | POST /fit
 Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
@@ -894,6 +915,7 @@ The width and height specify a maximum bounding box for the image.
 - field `string` - Only POST and `multipart/form` payloads
 - interlace `bool`
 - aspectratio `string`
+- palette `bool`
 
 #### GET | POST /rotate
 Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
@@ -931,6 +953,7 @@ Returns a new image with the same size and format as the input image.
 - field `string` - Only POST and `multipart/form` payloads
 - interlace `bool`
 - aspectratio `string`
+- palette `bool`
 
 #### GET | POST /flip
 Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
@@ -959,6 +982,7 @@ Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
 - field `string` - Only POST and `multipart/form` payloads
 - interlace `bool`
 - aspectratio `string`
+- palette `bool`
 
 #### GET | POST /flop
 Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
@@ -987,6 +1011,7 @@ Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
 - field `string` - Only POST and `multipart/form` payloads
 - interlace `bool`
 - aspectratio `string`
+- palette `bool`
 
 #### GET | POST /convert
 Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
@@ -1014,6 +1039,7 @@ Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
 - field `string` - Only POST and `multipart/form` payloads
 - interlace `bool`
 - aspectratio `string`
+- palette `bool`
 
 #### GET | POST /pipeline
 Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
@@ -1066,7 +1092,7 @@ Self-documented JSON operation schema:
 - **zoom** - Same as [`/zoom`](#get--post-zoom) endpoint.
 - **convert** - Same as [`/convert`](#get--post-convert) endpoint.
 - **watermark** - Same as [`/watermark`](#get--post-watermark) endpoint.
-- **watermarkImage** - Same as [`/watermarkimage`](#get--post-watermarkimage) endpoint.
+- **watermarkimage** - Same as [`/watermarkimage`](#get--post-watermarkimage) endpoint.
 - **blur** - Same as [`/blur`](#get--post-blur) endpoint.
 
 ###### Example
@@ -1137,6 +1163,7 @@ Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
 - minampl `float`
 - field `string` - Only POST and `multipart/form` payloads
 - interlace `bool`
+- palette `bool`
 
 #### GET | POST /watermarkimage
 Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
@@ -1167,6 +1194,7 @@ Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
 - minampl `float`
 - field `string` - Only POST and `multipart/form` payloads
 - interlace `bool`
+- palette `bool`
 
 #### GET | POST /blur
 Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
@@ -1195,6 +1223,7 @@ Accepts: `image/*, multipart/form-data`. Content-Type: `image/*`
 - field `string` - Only POST and `multipart/form` payloads
 - interlace `bool`
 - aspectratio `string`
+- palette `bool`
 
 ## Logging
 
